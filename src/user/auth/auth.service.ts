@@ -23,15 +23,10 @@ export class AuthService {
         email,
       },
     });
-
-    console.log(userExists);
-
     if (userExists) {
       throw new ConflictException();
     }
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await this.prismaService.user.create({
       data: {
         email,
@@ -39,7 +34,6 @@ export class AuthService {
         role: userRole,
       },
     });
-
     const token = await jwt.sign(
       { email, id: user.id },
       process.env.JWT_PRIVATE_KEY,
@@ -47,7 +41,6 @@ export class AuthService {
         expiresIn: 3600000,
       },
     );
-
     return token;
   }
 
@@ -57,31 +50,20 @@ export class AuthService {
         email,
       },
     });
-
-    console.log(user);
-
     if (!user) {
       throw new HttpException(
         'The credentials are incorrect',
         HttpStatus.NOT_FOUND,
       );
     }
-
     const hashedPassword = user.password;
-
     const isValidPassword = await bcrypt.compare(password, hashedPassword);
-
-    console.log(isValidPassword);
-
     if (!isValidPassword) {
       throw new HttpException(
         'The credentials are incorrect',
         HttpStatus.FORBIDDEN,
       );
     }
-
-    console.log(hashedPassword);
-
     return await this.generateJWT(email, user.id);
   }
 
@@ -93,7 +75,22 @@ export class AuthService {
 
   generateProductKey(email: string, userRole: Role) {
     const string = `${email}-${userRole}-${process.env.PRODUCT_KEY_SECRET}`;
-
     return bcrypt.hash(string, 10);
+  }
+
+  googleAuth(req) {
+    console.log(req);
+  }
+
+  googleAuthRedirect(req) {
+    console.log(req);
+    if (!req.user) {
+      return 'No user from google';
+    }
+
+    return {
+      message: 'User Info from Google',
+      user: req.user,
+    };
   }
 }

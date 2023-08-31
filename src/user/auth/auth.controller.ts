@@ -1,15 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseEnumPipe,
   Post,
   UnauthorizedException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegistrationDto, generateProductKeyDto } from '../dtos/auth.dto';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
@@ -46,5 +50,17 @@ export class AuthController {
   @Post('key')
   generateProductKey(@Body() body: generateProductKeyDto) {
     return this.authService.generateProductKey(body.email, body.userRole);
+  }
+
+  @Get('googleauth')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req) {
+    // return this.authService.googleAuth(req);
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  googleAuthRedirect(@Req() req) {
+    return this.authService.googleAuthRedirect(req);
   }
 }
