@@ -13,3 +13,17 @@ export class StoryDto {
   @IsOptional()
   published?: boolean;
 }
+
+export class EditStoryDto {
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsString()
+  @IsOptional()
+  content?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  published?: boolean;
+}

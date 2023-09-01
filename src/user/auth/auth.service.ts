@@ -83,9 +83,13 @@ export class AuthService {
   }
 
   private generateJWT(user: User, userAgent?: string) {
-    return jwt.sign({ user, userAgent }, process.env.JWT_PRIVATE_KEY, {
-      expiresIn: 3600000,
-    });
+    return jwt.sign(
+      { id: user.id, email: user.email, userAgent },
+      process.env.JWT_PRIVATE_KEY,
+      {
+        expiresIn: 3600000,
+      },
+    );
   }
 
   generateProductKey(email: string, userRole: Role) {
