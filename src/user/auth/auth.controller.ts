@@ -8,16 +8,23 @@ import {
   UnauthorizedException,
   UseGuards,
   Req,
+  Res,
+  Query,
 } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { AuthService, UserDataI } from './auth.service';
 import { RegistrationDto, generateProductKeyDto } from '../dtos/auth.dto';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuthGuard } from '@nestjs/passport';
+import { HttpService } from '@nestjs/axios';
+import { UserAgent } from 'src/decorators/user-agent.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly httpService: HttpService,
+  ) {}
   @Post('registration/:userRole')
   async registration(
     @Body() body: RegistrationDto,
@@ -33,18 +40,16 @@ export class AuthController {
         validProductKey,
         body.productKey,
       );
-
       if (!isValidProductKey) {
         throw new UnauthorizedException();
       }
-      console.log(isValidProductKey);
     }
     return this.authService.registration(body, userRole);
   }
 
   @Post('login')
-  async login(@Body() body: RegistrationDto) {
-    return this.authService.login(body);
+  async login(@Body() body: RegistrationDto, @UserAgent() userAgent: string) {
+    return this.authService.login(body, userAgent);
   }
 
   @Post('key')
@@ -52,15 +57,36 @@ export class AuthController {
     return this.authService.generateProductKey(body.email, body.userRole);
   }
 
-  @Get('googleauth')
+  @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth(@Req() req) {
-    // return this.authService.googleAuth(req);
+  googleAuth(
+    email: string,
+    @UserAgent() userAgent: string,
+    userData: UserDataI,
+  ) {
+    return this.authService.googleAuth(email, userAgent, userData);
   }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  googleAuthRedirect(@Req() req) {
-    return this.authService.googleAuthRedirect(req);
+  googleAuthRedirect(@Req() req, @Res() res) {
+    return this.authService.googleAuthRedirect(req, res);
+  }
+
+  @Get('google/success')
+  googleAuthSuccess(
+    @Query('token') token: string,
+    @Query('firstName') firstName: string,
+    @Query('lastName') lastName: string,
+    @Query('picture') picture: string,
+    @UserAgent() userAgent: string,
+  ) {
+    return this.authService.googleAuthSuccess({
+      token,
+      firstName,
+      lastName,
+      picture,
+      userAgent,
+    });
   }
 }
