@@ -36,13 +36,18 @@ export class StoryService {
   }
 
   async editStory(id, body, userId) {
-    console.log({ id, body, userId });
+    const isThereSuchTitle = await this.prismaService.story.findUnique({
+      where: { title: body.title },
+    });
+    if (isThereSuchTitle) {
+      throw new BadRequestException(
+        `The name of the story ${body.title} already EXISTS`,
+      );
+    }
     const story = await this.prismaService.story.findUnique({ where: { id } });
     if (!story) {
       throw new BadRequestException(`Story with the name ${id} was NOT found`);
     }
-
-    console.log({ authorId: story.authorId });
     if (story.authorId !== userId) {
       throw new ForbiddenException('You do not have rights to edit this story');
     }
@@ -68,8 +73,30 @@ export class StoryService {
         'You do not have rights to delete this story',
       );
     }
-    return await this.prismaService.story.delete({
+    const deletedStory = await this.prismaService.story.delete({
       where: { id },
     });
+    if (!deletedStory)
+      throw new BadRequestException(
+        `Story with the name ${id} was NOT deleted. Please, try again later`,
+      );
+    return { message: 'The story was deleted', deletedStory };
+  }
+
+  async getAllStories() {
+    const allStories = await this.prismaService.story.findMany({
+      include: {
+        author: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            picture: true,
+          },
+        },
+      },
+    });
+
+    return allStories;
   }
 }

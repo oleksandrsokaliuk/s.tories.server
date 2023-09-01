@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Post,
   Put,
@@ -13,10 +14,11 @@ import { StoryService } from './story.service';
 import User, { UserTypeI } from 'src/decorators/user.decorator';
 import { UserInterceptor } from 'src/interceptors/user.interceptor';
 
-@UseInterceptors(UserInterceptor)
 @Controller('story')
 export class StoryController {
   constructor(private readonly storyService: StoryService) {}
+
+  @UseInterceptors(UserInterceptor)
   @Post('/')
   createStory(@Body() body: StoryDto, @User() user: UserTypeI) {
     if (!user) {
@@ -45,7 +47,11 @@ export class StoryController {
     if (!user) {
       throw new UnauthorizedException('You have to authorize first');
     }
-    console.log({ myUser: user });
     return this.storyService.deleteStory(id, user.id);
+  }
+
+  @Get('/all')
+  getAllStories() {
+    return this.storyService.getAllStories();
   }
 }
