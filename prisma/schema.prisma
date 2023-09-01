@@ -20,6 +20,7 @@ model User {
   role            Role
   stories         Story[]
   provider        Provider?
+  likes           Likes[]
 }
 
 
@@ -27,12 +28,22 @@ model Story {
   id              String @id @default(auto()) @map("_id") @db.ObjectId
   created_at      DateTime? @default(now())
   updated_at      DateTime? @updatedAt
-  title           String
+  title           String @unique
   content         String?
   published       Boolean @default(false)
   viewCount       Int @default(0)
   author          User? @relation(fields: [authorId], references: [id])
   authorId        String? @db.ObjectId
+  likes           Likes[]
+}
+
+model Likes {
+  id              String @id @default(auto()) @map("_id") @db.ObjectId
+  story           Story @relation(fields: [storyId], references: [id])
+  storyId         String   @db.ObjectId
+  user            User @relation(fields: [userId], references: [id])
+  userId          String   @db.ObjectId
+
 }
 
 enum Role {
@@ -45,3 +56,5 @@ enum Provider {
   FACEBOOK
   JWT
 }
+
+
