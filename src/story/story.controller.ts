@@ -54,4 +54,28 @@ export class StoryController {
   getAllStories() {
     return this.storyService.getAllStories();
   }
+
+  @Get('/:id')
+  getStoryByStoryId(@Param('id') id: string) {
+    return this.storyService.getStoryByStoryId(id);
+  }
+
+  @UseInterceptors(UserInterceptor)
+  @Get('/user/:id')
+  getStoriesByUserId(@Param('id') id: string, @User() user?: UserTypeI) {
+    return this.storyService.getStoriesByUserId(id, user?.id);
+  }
+
+  @UseInterceptors(UserInterceptor)
+  @Put('/like/:id')
+  likeByStoryId(@Param('id') storyId: string, @User() user: UserTypeI) {
+    return this.storyService.likeByStoryId(storyId, user.id);
+  }
+
+  @UseInterceptors(UserInterceptor)
+  @Get('/my/favourites')
+  getMyLikes(@User() user: UserTypeI) {
+    console.log({ user });
+    return this.storyService.getMyLikes(user.id);
+  }
 }
