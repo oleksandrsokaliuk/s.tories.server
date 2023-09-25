@@ -35,3 +35,30 @@ export class generateProductKeyDto {
   @IsEnum(Role)
   userRole: Role;
 }
+
+export class UpdateUserInfoDto {
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  email: string;
+
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  firstName: string;
+
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  lastName: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/\(?([0-9]{3})\)?([ .-]?)([0-9]{3})\2([0-9]{4})/)
+  phone: string;
+
+  @IsOptional()
+  @IsNotEmpty()
+  @IsString()
+  picture: string;
+}

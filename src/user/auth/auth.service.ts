@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Provider, Role, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -26,6 +27,17 @@ export interface UserDataI {
   userAgent: string;
 }
 
+export interface FacebookUserI {
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface FacebookDataI {
+  user: FacebookUserI;
+  accessToken: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -39,7 +51,7 @@ export class AuthService {
       },
     });
     if (userExists) {
-      throw new ConflictException();
+      throw new ConflictException(`User with email ${email} already exists`);
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await this.prismaService.user.create({
@@ -82,6 +94,27 @@ export class AuthService {
     return await this.generateJWT(user, userAgent);
   }
 
+  async updateInfo(body) {
+    console.log({ body });
+  }
+
+  async me(user) {
+    const getUser = await this.prismaService.user.findUnique({
+      where: {
+        email: user.email,
+      },
+    });
+    const { email, firstName, lastName, phone, picture, role } = getUser;
+    return {
+      email,
+      firstName,
+      lastName,
+      phone,
+      picture,
+      role,
+    };
+  }
+
   private generateJWT(user: User, userAgent?: string) {
     return jwt.sign(
       { id: user.id, email: user.email, userAgent },
@@ -105,7 +138,7 @@ export class AuthService {
     });
 
     if (user) {
-      return this.generateJWT(user, userAgent);
+      return { token: this.generateJWT(user, userAgent), user };
     }
     const createUser = await this.prismaService.user.create({
       data: {
@@ -124,7 +157,7 @@ export class AuthService {
       );
     }
 
-    return this.generateJWT(createUser, userAgent);
+    return { token: this.generateJWT(createUser, userAgent), user: createUser };
   }
 
   googleAuthRedirect(req, res) {
@@ -133,12 +166,12 @@ export class AuthService {
     }
     const token = req.user['accessToken'];
     return res.redirect(
-      `http://localhost:3000/auth/google/success?token=${token}&firstName=${req.user.firstName}&lastName=${req.user.lastName}&picture=${req.user.picture}`,
+      `http://localhost:3001/auth/google/success?token=${token}&firstName=${req.user.firstName}&lastName=${req.user.lastName}&picture=${req.user.picture}`,
     );
   }
 
-  async googleAuthSuccess(userData: UserDataI) {
-    return this.httpService
+  async googleAuthSuccess(res, userData: UserDataI) {
+    const profileToken = this.httpService
       .get(
         `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${userData.token}`,
       )
@@ -148,5 +181,81 @@ export class AuthService {
         }),
         handleTimeoutAndErrors(),
       );
+
+    profileToken.subscribe(
+      (data) => {
+        if (!data) {
+          throw new BadRequestException(`Profile does not exist`);
+        }
+        const { token, user } = data;
+        const { email, firstName, lastName, picture } = user;
+        console.log(data);
+        // return res.redirect(
+        //   `http://localhost:3000/auth/${token}/${email}/${firstName}/${lastName}/${picture}`,
+        // );
+        return res.redirect(
+          `http://localhost:3000/auth/${token}/${email}/${firstName}/${lastName}/${encodeURIComponent(
+            picture,
+          )}`,
+        );
+      },
+      (err) => {
+        console.log(err);
+      },
+    );
+  }
+
+  async facebookLoginRedirect({ accessToken, user }: FacebookDataI) {
+    const { email, lastName, firstName } = user;
+    if (!email) {
+      throw new BadRequestException(
+        'You have to confirm your email address in Facebook to log in',
+      );
+    }
+    const isAlreadyRegistered = await this.prismaService.user.findUnique({
+      where: {
+        email,
+      },
+    });
+    if (isAlreadyRegistered) {
+      if (!isAlreadyRegistered.firstName) {
+        await this.prismaService.user.update({
+          where: {
+            email,
+          },
+          data: {
+            firstName,
+          },
+        });
+      }
+      if (!isAlreadyRegistered.lastName) {
+        await this.prismaService.user.update({
+          where: {
+            email,
+          },
+          data: {
+            lastName,
+          },
+        });
+      }
+      return {
+        message: 'The user already exists. You are logged in',
+        accessToken,
+      };
+    }
+    const newUser = await this.prismaService.user.create({
+      data: {
+        email,
+        firstName,
+        lastName,
+        role: Role.USER,
+      },
+    });
+    if (!newUser) {
+      throw new InternalServerErrorException(
+        `The user with email ${email} was NOT registered. Please, try again later`,
+      );
+    }
+    return { message: 'User was created successfully', newUser, accessToken };
   }
 }

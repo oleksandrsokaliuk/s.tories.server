@@ -10,14 +10,24 @@ import {
   Req,
   Res,
   Query,
+  HttpStatus,
+  Put,
+  UseInterceptors,
 } from '@nestjs/common';
-import { AuthService, UserDataI } from './auth.service';
-import { RegistrationDto, generateProductKeyDto } from '../dtos/auth.dto';
+import { AuthService, FacebookDataI, UserDataI } from './auth.service';
+import {
+  RegistrationDto,
+  UpdateUserInfoDto,
+  generateProductKeyDto,
+} from '../dtos/auth.dto';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuthGuard } from '@nestjs/passport';
 import { HttpService } from '@nestjs/axios';
 import { UserAgent } from 'src/decorators/user-agent.decorator';
+import { Request } from 'express';
+import { UserInterceptor } from 'src/interceptors/user.interceptor';
+import User, { UserTypeI } from 'src/decorators/user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -52,6 +62,18 @@ export class AuthController {
     return this.authService.login(body, userAgent);
   }
 
+  @UseInterceptors(UserInterceptor)
+  @Put('update')
+  async updateInfo(@Body() body: UpdateUserInfoDto) {
+    return this.authService.updateInfo(body);
+  }
+
+  @UseInterceptors(UserInterceptor)
+  @Get('/me')
+  async me(@User() user: UserTypeI) {
+    return this.authService.me(user);
+  }
+
   @Post('key')
   generateProductKey(@Body() body: generateProductKeyDto) {
     return this.authService.generateProductKey(body.email, body.userRole);
@@ -75,18 +97,35 @@ export class AuthController {
 
   @Get('google/success')
   googleAuthSuccess(
+    @Res() res,
     @Query('token') token: string,
     @Query('firstName') firstName: string,
     @Query('lastName') lastName: string,
     @Query('picture') picture: string,
     @UserAgent() userAgent: string,
   ) {
-    return this.authService.googleAuthSuccess({
+    return this.authService.googleAuthSuccess(res, {
       token,
       firstName,
       lastName,
       picture,
       userAgent,
     });
+  }
+
+  @Get('/facebook')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookLogin(): Promise<any> {
+    return HttpStatus.OK;
+  }
+
+  @Get('/facebook/redirect')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookLoginRedirect(@Req() req: Request): Promise<any> {
+    return {
+      statusCode: HttpStatus.OK,
+      data: req.user,
+    };
+    // return this.authService.facebookLoginRedirect(req.user as FacebookDataI);
   }
 }

@@ -4,10 +4,11 @@ import { AuthService } from './auth/auth.service';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { GoogleStrategy } from './authStrategy/google.strategy';
 import { HttpModule } from '@nestjs/axios';
+import { FacebookStrategy } from './authStrategy/facebook.strategy';
 
 @Module({
   imports: [PrismaModule, HttpModule],
   controllers: [AuthController],
-  providers: [AuthService, GoogleStrategy],
+  providers: [AuthService, GoogleStrategy, FacebookStrategy],
 })
 export class UserModule {}
